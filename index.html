@@ -1,0 +1,1049 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LuminaPro — Manual Camera & Creative Photobooth</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0f;
+      --surface: #111118;
+      --surface2: #1a1a24;
+      --surface3: #22222e;
+      --accent: #c8a96e;
+      --accent2: #7b9cff;
+      --text: #f0ede8;
+      --muted: #6b6b80;
+      --dim: #3a3a4a;
+      --danger: #ff5f57;
+      --success: #30d158;
+      --mono: 'DM Mono', monospace;
+      --display: 'Syne', sans-serif;
+    }
+
+    html, body {
+      height: 100%;
+      background: #07070d;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--display);
+      color: var(--text);
+    }
+
+    /* ===== APP SHELL ===== */
+    .app {
+      background: var(--bg);
+      width: 100%;
+      max-width: 860px;
+      min-height: 580px;
+      border-radius: 18px;
+      overflow: hidden;
+      border: 0.5px solid #2a2a3a;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 40px 120px rgba(0,0,0,0.8);
+    }
+
+    /* ===== TOPBAR ===== */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 20px;
+      background: var(--surface);
+      border-bottom: 0.5px solid var(--dim);
+      flex-shrink: 0;
+    }
+    .logo {
+      font-family: var(--display);
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      color: var(--accent);
+    }
+    .logo span { color: var(--text); font-weight: 400; }
+
+    .mode-tabs {
+      display: flex;
+      background: var(--surface2);
+      border-radius: 8px;
+      padding: 3px;
+      gap: 2px;
+    }
+    .mode-tab {
+      padding: 7px 22px;
+      font-family: var(--display);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: transparent;
+      color: var(--muted);
+    }
+    .mode-tab.active { background: var(--accent); color: #000; }
+    .mode-tab:not(.active):hover { color: var(--text); }
+
+    .status-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .rec-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--danger);
+      animation: blink 1.5s infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.25} }
+
+    /* ===== MAIN LAYOUT ===== */
+    .main { display: flex; flex: 1; overflow: hidden; }
+
+    /* ===== VIEWFINDER ===== */
+    .viewfinder-wrap {
+      flex: 1;
+      position: relative;
+      background: #000;
+      overflow: hidden;
+      min-height: 420px;
+    }
+    .viewfinder-bg {
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse at 40% 35%, #1a2035 0%, #070710 70%);
+      transition: background 0.1s;
+    }
+    .vf-grid {
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px);
+      background-size: 33.33% 33.33%;
+      pointer-events: none;
+    }
+    .vf-corner {
+      position: absolute;
+      width: 18px; height: 18px;
+      border-color: var(--accent);
+      border-style: solid;
+      opacity: 0.65;
+      pointer-events: none;
+    }
+    .vf-corner.tl { top: 16px; left: 16px; border-width: 2px 0 0 2px; }
+    .vf-corner.tr { top: 16px; right: 16px; border-width: 2px 2px 0 0; }
+    .vf-corner.bl { bottom: 56px; left: 16px; border-width: 0 0 2px 2px; }
+    .vf-corner.br { bottom: 56px; right: 16px; border-width: 0 2px 2px 0; }
+
+    .vf-focus {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 60px; height: 60px;
+      border: 1px solid var(--accent);
+      opacity: 0.5;
+      animation: focus-pulse 2.5s ease-in-out infinite;
+      pointer-events: none;
+      transition: width 0.3s, height 0.3s;
+    }
+    @keyframes focus-pulse {
+      0%,100%{opacity:0.5;transform:translate(-50%,-50%) scale(1)}
+      50%{opacity:0.85;transform:translate(-50%,-50%) scale(0.94)}
+    }
+
+    /* HUD */
+    .vf-hud {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      display: flex;
+      justify-content: space-between;
+      padding: 14px 18px;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: rgba(200,169,110,0.9);
+      pointer-events: none;
+      background: linear-gradient(rgba(0,0,0,0.5), transparent);
+    }
+    .hud-block { display: flex; flex-direction: column; gap: 2px; }
+    .hud-label { font-size: 9px; color: var(--muted); letter-spacing: 0.1em; }
+    .hud-val { font-size: 15px; font-weight: 500; line-height: 1; }
+
+    /* Histogram */
+    .histogram {
+      position: absolute;
+      bottom: 64px; right: 16px;
+      width: 90px; height: 50px;
+      background: rgba(0,0,0,0.65);
+      border: 0.5px solid var(--dim);
+      border-radius: 5px;
+      overflow: hidden;
+      display: flex;
+      align-items: flex-end;
+      gap: 1px;
+      padding: 5px 5px 0;
+      transition: opacity 0.3s;
+    }
+    .hist-bar {
+      flex: 1;
+      background: rgba(200,169,110,0.55);
+      border-radius: 1px 1px 0 0;
+      transition: height 0.6s ease;
+    }
+
+    /* Zebra badge */
+    .zebra-badge {
+      position: absolute;
+      bottom: 64px; left: 16px;
+      font-family: var(--mono);
+      font-size: 9px;
+      padding: 3px 9px;
+      border-radius: 4px;
+      letter-spacing: 0.1em;
+      transition: all 0.2s;
+      background: rgba(255,95,87,0.15);
+      border: 0.5px solid rgba(255,95,87,0.4);
+      color: #ff9f9a;
+    }
+    .zebra-badge.off {
+      background: transparent;
+      border-color: var(--dim);
+      color: var(--muted);
+    }
+
+    /* Viewfinder bottom bar */
+    .vf-bottom {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: linear-gradient(transparent, rgba(0,0,0,0.75));
+    }
+
+    /* Shutter */
+    .shutter-btn {
+      width: 58px; height: 58px;
+      border-radius: 50%;
+      border: 3px solid rgba(255,255,255,0.85);
+      background: rgba(255,255,255,0.12);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s;
+      flex-shrink: 0;
+    }
+    .shutter-btn:hover { background: rgba(255,255,255,0.22); transform: scale(1.05); }
+    .shutter-btn:active { transform: scale(0.92); }
+    .shutter-inner { width: 40px; height: 40px; border-radius: 50%; background: white; }
+
+    .wb-badge {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--accent);
+      text-align: right;
+      line-height: 1.7;
+    }
+    .format-info {
+      font-family: var(--mono);
+      font-size: 9px;
+      color: var(--muted);
+      text-align: left;
+      line-height: 1.7;
+    }
+
+    /* Countdown overlay */
+    .countdown-overlay {
+      position: absolute; inset: 0;
+      background: rgba(0,0,0,0.55);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--display);
+      font-size: 100px;
+      font-weight: 800;
+      color: white;
+      text-shadow: 0 2px 30px rgba(0,0,0,0.5);
+    }
+
+    /* ===== PRO PANEL ===== */
+    .panel-pro {
+      width: 210px;
+      background: var(--surface);
+      border-left: 0.5px solid var(--dim);
+      padding: 18px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      overflow-y: auto;
+      flex-shrink: 0;
+    }
+    .panel-pro::-webkit-scrollbar { width: 3px; }
+    .panel-pro::-webkit-scrollbar-thumb { background: var(--dim); border-radius: 2px; }
+
+    .ctrl-group > label {
+      display: block;
+      font-family: var(--mono);
+      font-size: 9px;
+      letter-spacing: 0.14em;
+      color: var(--muted);
+      margin-bottom: 9px;
+      text-transform: uppercase;
+    }
+    .ctrl-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .ctrl-row input[type=range] {
+      flex: 1;
+      height: 3px;
+      -webkit-appearance: none;
+      appearance: none;
+      background: var(--dim);
+      border-radius: 2px;
+      outline: none;
+      cursor: pointer;
+    }
+    .ctrl-row input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 13px; height: 13px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+    .ctrl-row input[type=range]:hover::-webkit-slider-thumb { transform: scale(1.2); }
+    .ctrl-val {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--accent);
+      min-width: 46px;
+      text-align: right;
+    }
+
+    .wb-presets { display: flex; flex-wrap: wrap; gap: 4px; }
+    .wb-pill {
+      font-family: var(--mono);
+      font-size: 9px;
+      padding: 4px 8px;
+      border-radius: 20px;
+      border: 0.5px solid var(--dim);
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.15s;
+      letter-spacing: 0.04em;
+    }
+    .wb-pill.active { border-color: var(--accent); color: var(--accent); background: rgba(200,169,110,0.1); }
+    .wb-pill:hover:not(.active) { color: var(--text); border-color: var(--muted); }
+
+    .filter-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+    .filter-pill {
+      font-family: var(--mono);
+      font-size: 9px;
+      padding: 5px 4px;
+      border-radius: 5px;
+      border: 0.5px solid var(--dim);
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.15s;
+      text-align: center;
+    }
+    .filter-pill.active { border-color: var(--accent2); color: var(--accent2); background: rgba(123,156,255,0.1); }
+    .filter-pill:hover:not(.active) { color: var(--text); }
+
+    .overlay-row { display: flex; gap: 5px; }
+    .overlay-btn {
+      flex: 1;
+      font-family: var(--mono);
+      font-size: 9px;
+      padding: 6px 4px;
+      border-radius: 5px;
+      border: 0.5px solid var(--dim);
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.15s;
+      text-align: center;
+      letter-spacing: 0.06em;
+    }
+    .overlay-btn.active { border-color: var(--accent2); color: var(--accent2); background: rgba(123,156,255,0.1); }
+
+    /* ===== BOOTH PANEL ===== */
+    .panel-booth {
+      width: 230px;
+      background: var(--surface);
+      border-left: 0.5px solid var(--dim);
+      padding: 18px 14px;
+      display: none;
+      flex-direction: column;
+      gap: 16px;
+      overflow-y: auto;
+      flex-shrink: 0;
+    }
+    .panel-booth::-webkit-scrollbar { width: 3px; }
+    .panel-booth::-webkit-scrollbar-thumb { background: var(--dim); border-radius: 2px; }
+
+    .section-label {
+      font-family: var(--mono);
+      font-size: 9px;
+      letter-spacing: 0.14em;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    /* Layout cards */
+    .layout-cards { display: flex; flex-direction: column; gap: 5px; }
+    .layout-card {
+      border: 0.5px solid var(--dim);
+      border-radius: 8px;
+      padding: 9px 11px;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: transparent;
+      color: var(--text);
+      text-align: left;
+      width: 100%;
+    }
+    .layout-card.active { border-color: var(--accent); background: rgba(200,169,110,0.07); }
+    .layout-card:hover:not(.active) { border-color: var(--muted); }
+
+    .layout-icon { display: flex; gap: 2px; flex-shrink: 0; }
+    .stripe { background: var(--dim); border-radius: 1px; transition: background 0.15s; }
+    .layout-card.active .stripe { background: var(--accent); }
+
+    .layout-name { font-family: var(--display); font-size: 11px; font-weight: 600; display: block; }
+    .layout-desc { font-family: var(--mono); font-size: 9px; color: var(--muted); }
+
+    /* Timer */
+    .timer-group { display: flex; gap: 5px; }
+    .timer-pill {
+      flex: 1;
+      font-family: var(--mono);
+      font-size: 10px;
+      padding: 6px 0;
+      border-radius: 5px;
+      border: 0.5px solid var(--dim);
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.15s;
+      text-align: center;
+    }
+    .timer-pill.active { border-color: var(--accent); color: var(--accent); background: rgba(200,169,110,0.1); }
+    .timer-pill:hover:not(.active) { color: var(--text); }
+
+    /* Frame color */
+    .frame-colors { display: flex; gap: 6px; flex-wrap: wrap; }
+    .frame-color {
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      cursor: pointer;
+      transition: all 0.15s;
+      border: 2px solid transparent;
+    }
+    .frame-color.active { border-color: white; transform: scale(1.18); }
+
+    /* Strip preview */
+    .strip-preview {
+      background: var(--surface2);
+      border-radius: 8px;
+      padding: 10px;
+      border: 0.5px solid var(--dim);
+    }
+    .strip-frames-container {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .strip-frame {
+      width: 100%;
+      border-radius: 3px;
+      background: var(--dim);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 8px;
+      font-family: var(--mono);
+      font-size: 8px;
+      color: var(--muted);
+      cursor: default;
+      transition: all 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+    .strip-frame.taken {
+      background: rgba(48,209,88,0.12);
+      color: var(--success);
+      border: 0.5px solid rgba(48,209,88,0.25);
+    }
+    .strip-frame.active-frame {
+      border: 1px solid var(--accent);
+      background: rgba(200,169,110,0.08);
+    }
+    .retake-btn {
+      font-family: var(--mono);
+      font-size: 7px;
+      color: var(--accent);
+      background: rgba(0,0,0,0.5);
+      padding: 1px 5px;
+      border-radius: 3px;
+      display: none;
+      cursor: pointer;
+      border: none;
+    }
+    .strip-frame.taken:hover .retake-btn { display: block; }
+
+    /* Start button */
+    .booth-start-btn {
+      width: 100%;
+      padding: 11px;
+      background: var(--accent);
+      color: #000;
+      border: none;
+      border-radius: 9px;
+      font-family: var(--display);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-transform: uppercase;
+    }
+    .booth-start-btn:hover { opacity: 0.88; transform: scale(1.02); }
+    .booth-start-btn:active { transform: scale(0.97); }
+    .booth-start-btn:disabled { opacity: 0.38; cursor: not-allowed; transform: none; }
+
+    .booth-stat {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--muted);
+      text-align: center;
+      padding: 7px;
+      background: var(--surface2);
+      border-radius: 7px;
+    }
+    .booth-stat span { color: var(--accent); font-weight: 500; }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 640px) {
+      body { align-items: flex-start; }
+      .app { max-width: 100%; border-radius: 0; min-height: 100vh; }
+      .panel-pro, .panel-booth { width: 170px; }
+      .mode-tab { padding: 6px 14px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="app" id="app">
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="logo">LUMINA<span>PRO</span></div>
+    <div class="mode-tabs">
+      <button class="mode-tab active" id="tab-pro" onclick="switchMode('pro')">PRO</button>
+      <button class="mode-tab" id="tab-booth" onclick="switchMode('booth')">BOOTH</button>
+    </div>
+    <div class="status-row">
+      <div class="rec-dot"></div>
+      <span id="status-text">LIVE</span>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <!-- VIEWFINDER -->
+    <div class="viewfinder-wrap">
+      <div class="viewfinder-bg" id="vf-bg"></div>
+      <div class="vf-grid"></div>
+      <div class="vf-corner tl"></div>
+      <div class="vf-corner tr"></div>
+      <div class="vf-corner bl"></div>
+      <div class="vf-corner br"></div>
+      <div class="vf-focus" id="vf-focus"></div>
+
+      <!-- HUD -->
+      <div class="vf-hud">
+        <div class="hud-block">
+          <span class="hud-label">ISO</span>
+          <span class="hud-val" id="hud-iso">800</span>
+        </div>
+        <div class="hud-block" style="text-align:center">
+          <span class="hud-label">SHUTTER</span>
+          <span class="hud-val" id="hud-ss">1/125</span>
+        </div>
+        <div class="hud-block" style="text-align:right">
+          <span class="hud-label">FOCUS</span>
+          <span class="hud-val" id="hud-focus">&#x221e;</span>
+        </div>
+      </div>
+
+      <!-- Histogram -->
+      <div class="histogram" id="histogram">
+        <div class="hist-bar" style="height:30%"></div>
+        <div class="hist-bar" style="height:52%"></div>
+        <div class="hist-bar" style="height:74%"></div>
+        <div class="hist-bar" style="height:90%"></div>
+        <div class="hist-bar" style="height:83%"></div>
+        <div class="hist-bar" style="height:60%"></div>
+        <div class="hist-bar" style="height:38%"></div>
+        <div class="hist-bar" style="height:18%"></div>
+      </div>
+
+      <!-- Zebra -->
+      <div class="zebra-badge" id="zebra-badge">ZEBRA ON</div>
+
+      <!-- Countdown overlay -->
+      <div class="countdown-overlay" id="countdown-overlay">3</div>
+
+      <!-- Bottom controls -->
+      <div class="vf-bottom">
+        <div class="format-info">
+          <span id="format-badge" style="color:var(--accent2);font-family:var(--mono);font-size:10px">RAW+DNG</span><br>
+          <span style="font-family:var(--mono);font-size:9px;color:var(--muted)">48MP</span>
+        </div>
+        <button class="shutter-btn" id="shutter-btn" onclick="handleShutter()">
+          <div class="shutter-inner"></div>
+        </button>
+        <div class="wb-badge" id="wb-badge">
+          <span style="font-size:8px;color:var(--muted);font-family:var(--mono)">WB</span><br>
+          DAYLIGHT<br>
+          <span style="color:var(--text);font-size:9px">5600K</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- PRO PANEL -->
+    <div class="panel-pro" id="panel-pro">
+
+      <div class="ctrl-group">
+        <label>ISO Sensitivity</label>
+        <div class="ctrl-row">
+          <input type="range" min="0" max="11" step="1" value="4" id="iso-slider" oninput="updateISO(this.value)" />
+          <span class="ctrl-val" id="iso-val">800</span>
+        </div>
+      </div>
+
+      <div class="ctrl-group">
+        <label>Shutter Speed</label>
+        <div class="ctrl-row">
+          <input type="range" min="0" max="18" step="1" value="12" id="ss-slider" oninput="updateSS(this.value)" />
+          <span class="ctrl-val" id="ss-val">1/125</span>
+        </div>
+      </div>
+
+      <div class="ctrl-group">
+        <label>Manual Focus</label>
+        <div class="ctrl-row">
+          <input type="range" min="0" max="100" value="85" id="focus-slider" oninput="updateFocus(this.value)" />
+          <span class="ctrl-val" id="focus-val">&#x221e;</span>
+        </div>
+      </div>
+
+      <div class="ctrl-group">
+        <label>White Balance</label>
+        <div class="wb-presets">
+          <button class="wb-pill active" onclick="setWB('Daylight','5600K',this)">Daylight</button>
+          <button class="wb-pill" onclick="setWB('Cloudy','6500K',this)">Cloudy</button>
+          <button class="wb-pill" onclick="setWB('Tungsten','3200K',this)">Tungsten</button>
+          <button class="wb-pill" onclick="setWB('Shade','7000K',this)">Shade</button>
+          <button class="wb-pill" onclick="setWB('Flash','5500K',this)">Flash</button>
+          <button class="wb-pill" onclick="setWB('Custom','4800K',this)">Custom</button>
+        </div>
+      </div>
+
+      <div class="ctrl-group">
+        <label>Overlays</label>
+        <div class="overlay-row">
+          <button class="overlay-btn active" id="btn-zebra" onclick="toggleZebra()">ZEBRA</button>
+          <button class="overlay-btn active" id="btn-hist" onclick="toggleHist()">HIST</button>
+        </div>
+      </div>
+
+      <div class="ctrl-group">
+        <label>Film Emulation</label>
+        <div class="filter-grid">
+          <button class="filter-pill active" onclick="setFilter(this)">Natural</button>
+          <button class="filter-pill" onclick="setFilter(this)">Kodak</button>
+          <button class="filter-pill" onclick="setFilter(this)">Fuji</button>
+          <button class="filter-pill" onclick="setFilter(this)">Agfa</button>
+          <button class="filter-pill" onclick="setFilter(this)">Cine Log</button>
+          <button class="filter-pill" onclick="setFilter(this)">B&amp;W</button>
+        </div>
+      </div>
+
+      <div class="ctrl-group">
+        <label>Smart Beauty</label>
+        <div class="ctrl-row">
+          <input type="range" min="0" max="100" step="1" value="0" id="beauty-slider" oninput="updateBeauty(this.value)" />
+          <span class="ctrl-val" id="beauty-val">0%</span>
+        </div>
+      </div>
+
+    </div><!-- /panel-pro -->
+
+    <!-- BOOTH PANEL -->
+    <div class="panel-booth" id="panel-booth">
+
+      <div>
+        <span class="section-label">Strip Layout</span>
+        <div class="layout-cards" id="layout-cards">
+
+          <button class="layout-card active" onclick="selectLayout(4, this)">
+            <div class="layout-icon">
+              <div style="display:flex;flex-direction:column;gap:2px">
+                <div class="stripe" style="width:14px;height:8px"></div>
+                <div class="stripe" style="width:14px;height:8px"></div>
+                <div class="stripe" style="width:14px;height:8px"></div>
+                <div class="stripe" style="width:14px;height:8px"></div>
+              </div>
+            </div>
+            <div>
+              <span class="layout-name">The Classic</span>
+              <span class="layout-desc">4 strip &middot; vertical</span>
+            </div>
+          </button>
+
+          <button class="layout-card" onclick="selectLayout(6, this)">
+            <div class="layout-icon">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px">
+                <div class="stripe" style="width:10px;height:8px"></div>
+                <div class="stripe" style="width:10px;height:8px"></div>
+                <div class="stripe" style="width:10px;height:8px"></div>
+                <div class="stripe" style="width:10px;height:8px"></div>
+                <div class="stripe" style="width:10px;height:8px"></div>
+                <div class="stripe" style="width:10px;height:8px"></div>
+              </div>
+            </div>
+            <div>
+              <span class="layout-name">The Gallery</span>
+              <span class="layout-desc">6 strip &middot; grid 2&times;3</span>
+            </div>
+          </button>
+
+          <button class="layout-card" onclick="selectLayout(10, this)">
+            <div class="layout-icon">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px">
+                <div class="stripe" style="width:10px;height:5px"></div>
+                <div class="stripe" style="width:10px;height:5px"></div>
+                <div class="stripe" style="width:10px;height:5px"></div>
+                <div class="stripe" style="width:10px;height:5px"></div>
+                <div class="stripe" style="width:10px;height:5px"></div>
+                <div class="stripe" style="width:10px;height:5px"></div>
+                <div class="stripe" style="width:10px;height:5px"></div>
+                <div class="stripe" style="width:10px;height:5px"></div>
+                <div class="stripe" style="width:10px;height:5px"></div>
+                <div class="stripe" style="width:10px;height:5px"></div>
+              </div>
+            </div>
+            <div>
+              <span class="layout-name">The Memory</span>
+              <span class="layout-desc">10 strip &middot; poster</span>
+            </div>
+          </button>
+
+        </div>
+      </div>
+
+      <div>
+        <span class="section-label">Countdown Timer</span>
+        <div class="timer-group">
+          <button class="timer-pill" onclick="selectTimer(3, this)">3s</button>
+          <button class="timer-pill active" onclick="selectTimer(5, this)">5s</button>
+          <button class="timer-pill" onclick="selectTimer(10, this)">10s</button>
+        </div>
+      </div>
+
+      <div>
+        <span class="section-label">Frame Color</span>
+        <div class="frame-colors">
+          <div class="frame-color active" style="background:#f5e6d3" onclick="selectFrameColor(this)"></div>
+          <div class="frame-color" style="background:#d4c5b2" onclick="selectFrameColor(this)"></div>
+          <div class="frame-color" style="background:#c8d4c5" onclick="selectFrameColor(this)"></div>
+          <div class="frame-color" style="background:#b2c5d4" onclick="selectFrameColor(this)"></div>
+          <div class="frame-color" style="background:#d4b2c5" onclick="selectFrameColor(this)"></div>
+          <div class="frame-color" style="background:#1a1a24" onclick="selectFrameColor(this)"></div>
+          <div class="frame-color" style="background:#ffffff;border:1px solid var(--dim)" onclick="selectFrameColor(this)"></div>
+        </div>
+      </div>
+
+      <div>
+        <span class="section-label">Strip Preview</span>
+        <div class="strip-preview">
+          <div class="strip-frames-container" id="strip-frames"></div>
+        </div>
+      </div>
+
+      <button class="booth-start-btn" id="booth-start-btn" onclick="startBooth()">
+        Start Shoot
+      </button>
+
+      <div class="booth-stat">
+        Frames: <span id="frames-taken">0</span> / <span id="frames-total">4</span>
+      </div>
+
+    </div><!-- /panel-booth -->
+
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<script>
+  /* ===== DATA ===== */
+  const ISO_VALUES = [100,200,400,640,800,1000,1250,1600,3200,6400,12800,25600,51200];
+  const SS_VALUES  = ['30"','15"','8"','4"','2"','1"','1/2','1/4','1/8','1/15','1/30','1/60','1/125','1/250','1/500','1/1000','1/2000','1/4000','1/8000'];
+
+  /* ===== STATE ===== */
+  let currentMode   = 'pro';
+  let zebraOn       = true;
+  let histOn        = true;
+  let boothLayout   = 4;
+  let boothTimer    = 5;
+  let framesTaken   = 0;
+  let isShooting    = false;
+  let countdownTick = null;
+
+  /* ===== HELPERS ===== */
+  function focusLabel(v) {
+    v = +v;
+    if (v >= 95) return '&#x221e;';
+    if (v >= 80) return '5 m';
+    if (v >= 60) return '2 m';
+    if (v >= 40) return '1 m';
+    if (v >= 20) return '0.5 m';
+    return '0.3 m';
+  }
+
+  /* ===== MODE SWITCH ===== */
+  function switchMode(m) {
+    currentMode = m;
+    document.getElementById('tab-pro').classList.toggle('active', m === 'pro');
+    document.getElementById('tab-booth').classList.toggle('active', m === 'booth');
+    document.getElementById('panel-pro').style.display   = m === 'pro'   ? 'flex' : 'none';
+    document.getElementById('panel-booth').style.display = m === 'booth' ? 'flex' : 'none';
+    document.getElementById('status-text').textContent   = m === 'pro'   ? 'LIVE' : 'BOOTH';
+    if (m === 'booth') renderStrip();
+  }
+
+  /* ===== PRO CONTROLS ===== */
+  function updateISO(v) {
+    const val = ISO_VALUES[+v];
+    document.getElementById('iso-val').textContent  = val;
+    document.getElementById('hud-iso').textContent  = val;
+    randomizeHistogram();
+  }
+
+  function updateSS(v) {
+    const val = SS_VALUES[+v];
+    document.getElementById('ss-val').textContent = val;
+    document.getElementById('hud-ss').textContent = val;
+  }
+
+  function updateFocus(v) {
+    const label = focusLabel(v);
+    document.getElementById('focus-val').innerHTML  = label;
+    document.getElementById('hud-focus').innerHTML  = label;
+    const size = 38 + (100 - v) * 0.45;
+    const el = document.getElementById('vf-focus');
+    el.style.width  = size + 'px';
+    el.style.height = size + 'px';
+  }
+
+  function updateBeauty(v) {
+    document.getElementById('beauty-val').textContent = v + '%';
+  }
+
+  function setWB(name, k, btn) {
+    document.querySelectorAll('.wb-pill').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('wb-badge').innerHTML =
+      '<span style="font-size:8px;color:var(--muted);font-family:var(--mono)">WB</span><br>' +
+      name + '<br>' +
+      '<span style="color:var(--text);font-size:9px">' + k + '</span>';
+  }
+
+  function setFilter(btn) {
+    document.querySelectorAll('.filter-grid .filter-pill').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+
+  function toggleZebra() {
+    zebraOn = !zebraOn;
+    const badge = document.getElementById('zebra-badge');
+    badge.textContent = zebraOn ? 'ZEBRA ON' : 'ZEBRA OFF';
+    badge.classList.toggle('off', !zebraOn);
+    document.getElementById('btn-zebra').classList.toggle('active', zebraOn);
+  }
+
+  function toggleHist() {
+    histOn = !histOn;
+    document.getElementById('histogram').style.opacity = histOn ? '1' : '0';
+    document.getElementById('btn-hist').classList.toggle('active', histOn);
+  }
+
+  function randomizeHistogram() {
+    const bars = document.querySelectorAll('.hist-bar');
+    const isoIdx = +document.getElementById('iso-slider').value;
+    const iso    = ISO_VALUES[isoIdx];
+    const base   = Math.min(88, 28 + Math.log2(iso / 100) * 8);
+    bars.forEach((b, i) => {
+      const h = Math.max(8, Math.min(98, base + (Math.random() * 28 - 14) + (i < 4 ? -8 : 8)));
+      b.style.height = Math.round(h) + '%';
+    });
+  }
+
+  /* ===== SHUTTER ===== */
+  function handleShutter() {
+    const btn = document.getElementById('shutter-btn');
+    btn.style.transform = 'scale(0.9)';
+    setTimeout(() => btn.style.transform = '', 140);
+
+    const bg = document.getElementById('vf-bg');
+    bg.style.background = 'rgba(255,255,255,0.18)';
+    setTimeout(() => {
+      bg.style.background = 'radial-gradient(ellipse at 40% 35%, #1a2035 0%, #070710 70%)';
+    }, 110);
+  }
+
+  /* ===== BOOTH LOGIC ===== */
+  function renderStrip() {
+    const container = document.getElementById('strip-frames');
+    container.innerHTML = '';
+    document.getElementById('frames-total').textContent = boothLayout;
+    document.getElementById('frames-taken').textContent = Math.min(framesTaken, boothLayout);
+
+    const isGrid = boothLayout >= 6;
+    container.style.display             = isGrid ? 'grid' : 'flex';
+    container.style.gridTemplateColumns = isGrid ? '1fr 1fr' : '';
+    container.style.flexDirection       = isGrid ? '' : 'column';
+    container.style.gap                 = '3px';
+
+    const frameH = boothLayout <= 4 ? '34px' : boothLayout <= 6 ? '28px' : '22px';
+
+    for (let i = 0; i < boothLayout; i++) {
+      const taken  = i < framesTaken;
+      const active = i === framesTaken && !isShooting;
+
+      const frame = document.createElement('div');
+      frame.className = 'strip-frame' + (taken ? ' taken' : '') + (active ? ' active-frame' : '');
+      frame.style.height = frameH;
+
+      if (taken) {
+        frame.innerHTML =
+          '<span>&#x2713; frame ' + (i + 1) + '</span>' +
+          '<button class="retake-btn" onclick="retakeFrame(' + i + ')">retake</button>';
+      } else {
+        frame.innerHTML = '<span style="color:var(--dim);font-size:8px">' + (i + 1) + '</span>';
+      }
+
+      container.appendChild(frame);
+    }
+  }
+
+  function selectLayout(n, btn) {
+    boothLayout  = n;
+    framesTaken  = 0;
+    isShooting   = false;
+    document.querySelectorAll('.layout-card').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const startBtn = document.getElementById('booth-start-btn');
+    startBtn.textContent = 'Start Shoot';
+    startBtn.disabled    = false;
+    renderStrip();
+  }
+
+  function selectTimer(t, btn) {
+    boothTimer = t;
+    document.querySelectorAll('.timer-pill').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+
+  function selectFrameColor(el) {
+    document.querySelectorAll('.frame-color').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+  }
+
+  function retakeFrame(i) {
+    if (isShooting) return;
+    framesTaken = i;
+    const startBtn = document.getElementById('booth-start-btn');
+    startBtn.textContent = 'Continue Shoot';
+    startBtn.disabled    = false;
+    renderStrip();
+  }
+
+  function startBooth() {
+    if (isShooting) return;
+    if (framesTaken >= boothLayout) {
+      framesTaken = 0;
+      isShooting  = false;
+      document.getElementById('booth-start-btn').textContent = 'Start Shoot';
+      document.getElementById('booth-start-btn').disabled    = false;
+      renderStrip();
+      return;
+    }
+    shootNext();
+  }
+
+  function shootNext() {
+    if (framesTaken >= boothLayout) {
+      isShooting = false;
+      const btn  = document.getElementById('booth-start-btn');
+      btn.textContent = 'Save & Share &#10003;';
+      btn.disabled    = false;
+      return;
+    }
+
+    isShooting = true;
+    document.getElementById('booth-start-btn').disabled = true;
+    renderStrip();
+
+    let count = boothTimer;
+    const overlay = document.getElementById('countdown-overlay');
+    overlay.style.display = 'flex';
+    overlay.textContent   = count;
+
+    countdownTick = setInterval(() => {
+      count--;
+      if (count <= 0) {
+        clearInterval(countdownTick);
+        overlay.style.display = 'none';
+        captureFrame();
+      } else {
+        overlay.textContent = count;
+      }
+    }, 1000);
+  }
+
+  function captureFrame() {
+    handleShutter();
+    framesTaken++;
+    document.getElementById('frames-taken').textContent = framesTaken;
+    renderStrip();
+    setTimeout(shootNext, 700);
+  }
+
+  /* ===== INIT ===== */
+  randomizeHistogram();
+  setInterval(randomizeHistogram, 3200);
+  renderStrip();
+</script>
+</body>
+</html>
